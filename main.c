@@ -29,11 +29,11 @@ warum ein bestimmter Test fehlschlägt.
 #define LIST_IS_NOT_THAT_LONG -13
 #define LIST_DOES_NOT_HAVE_THIS_ELEMENT -404
 #define LISTS_START_AT_ZERO -1
-#define EMPTY_LIST = -42
 #define THERE_IS_NO_LIST -406
 #define NOT_ENOUGH_STORAGE -507
 #define UNKNOWN_ENUMERATION_KEYWORD -403
 #define SUCCESS 0
+#define TEST_FAILED -42
 
 
 // Hier Struktur und globale Variablen definieren
@@ -58,50 +58,64 @@ enum DIRECTION { FORWARD, REVERSE } direction;
 int put_entry(int position, int aktdata);  /* Eintrag einfuegen */
 int del_entry(int position);               /* Eintrag Loeschen  */
 int find_entry(int value);                 /* Eintrag suchen    */
-int del_list(void);                       /* Liste loeschen    */
+int del_list(void);                        /* Liste loeschen    */
 int get_anzentries(void);                  /* Anzahl ermitteln  */
 int printall(enum DIRECTION direction);    /* Liste ausgeben    */
+int test_list(void);                       /* Listenfunktionalität testen */
 
 
 int main(void)
 {
-   printf("START:\n");
-   put_entry(1,0);
-   put_entry(1,1);
-   put_entry(2,2);
-   put_entry(3,3);
-   put_entry(2, 4);
-
-
-   printf("DELETE: %d\n", del_list());
-   put_entry(1, 1);
-   del_list();
-   put_entry(0,1);
-   del_list();
-
-   printf("Entries: %d\n", get_anzentries());
-
-   put_entry(1, 1);
-   put_entry(2, 2);
-   put_entry(1, 0);
-
-
-   printf("Put-Fail: %d\n", put_entry(13, 13));
-   printf("Delete-Fail: %d\n", del_entry(42));
-   printf("Find-Fail: %d\n", find_entry(404));
-
-   del_list();
-
-   printf("_______________________\n");
-   put_entry(0, 10);
-   put_entry(2, 42);
-   put_entry(21, 42);
-   put_entry(3, 21);
-   put_entry(4, 4);
-   printall(FORWARD);
-   return 0;
+   return test_list();
 }
 
+/* Unterprogramm zum Testen der Listenfunktionalität
+*  Parameter: keine
+*  Return     0   = erfolgreich durchgeführt
+*             -42 = Test fehlgeschlagen
+*/
+int test_list(void)
+{
+   int ergebnis = 0;
+
+   printf("Fehlertest:\n");
+   printf("Put-Fail: %d (should be -1)\n", put_entry(-2, 22));
+   printf("          %d (should be -13)\n", put_entry(2, 6));
+   printf("Print-Fail: %d (should be -406)\n", printall(FORWARD));
+   printf("Delete-Fail: %d (should be -1)\n", del_entry(-2));
+   printf("             %d (should be -406)\n", del_entry(2));
+   printf("             %d (should be -406)\n", del_list());
+   pStart = (Liste*)malloc(sizeof(Liste));
+   pStart->pnext = NULL;
+   printf("             %d (should be -13)\n", del_entry(2));
+   free(pStart);
+   pStart = NULL;
+   printf("Search-Fail: %d (should be -406)\n", find_entry(13));
+   pStart = (Liste*)malloc(sizeof(Liste));
+   pStart->pnext = NULL;
+   printf("             %d (should be -404)\n", find_entry(13));
+   free(pStart);
+   pStart = NULL;
+
+   ergebnis = put_entry(1,1);
+   ergebnis = put_entry(2,3);
+   ergebnis = put_entry(2,2);
+   ergebnis = put_entry(4,4);
+   ergebnis = put_entry(3,6);
+   ergebnis = del_entry(find_entry(6));
+   printf("\nPos.: 3 = %d\n", ergebnis = find_entry(3));
+   printf("\nAnz.: 4 = %d\n", ergebnis = get_anzentries());
+   printf("Liste Vorwaerts: ");
+   ergebnis = printall(FORWARD);
+   printf("\nListe Ruekwaerts: ");
+   ergebnis = printall(REVERSE);
+   printf("\n");
+   ergebnis = del_list();
+
+   printf("\nFunktionstest-Ergebnis: %d (should be 0)\n", ergebnis);
+   return ergebnis;
+
+}
 
 /* Unterprogramm zum Einfuegen eines Nutzdatenelements
 *  Parameter: position = Einfuegepos.; 0 = vor pStart
@@ -117,7 +131,7 @@ int put_entry(int position, int aktdata) /* Einfuegen */
    Liste *pNew = (Liste*)malloc(sizeof(Liste));
    Liste element;
    pElement = &element;
-   int i = 1; //TODO: HERE IS DA ERROR AND I NEED TO FIND OUT HOW TO FIX IT!!
+   int i = 1;
 
    if (pNew == NULL) {
       return NOT_ENOUGH_STORAGE;
@@ -159,18 +173,24 @@ int put_entry(int position, int aktdata) /* Einfuegen */
 *         negative Werte = Fehler
 */
 int printall(enum DIRECTION direction)
-{  
+{
+   if(pStart == NULL) {
+      return THERE_IS_NO_LIST;
+   }
    if(direction == FORWARD) {
-      pElement = pStart->pnext;
+      pElement = pStart;
       while (pElement != NULL){
          printf("%d, ", pElement->daten);
          pElement = pElement->pnext;
       }
       return SUCCESS;
    } else if (direction == REVERSE) {
-      pElement = pStart;
       for (int i = get_anzentries(); i > 0; i--) {
-         printf("%d, ", (pElement+i)->daten);
+         pElement = pStart;
+         for (int k = 1; k < i; k++) {
+            pElement = pElement->pnext;
+         }
+         printf("%d, ", pElement->daten);
       }
       return SUCCESS;
    }
@@ -216,7 +236,7 @@ int del_entry(int position) /* Loeschen (delete) */
       return LISTS_START_AT_ZERO;
    }
 
-   int i = 0;
+   int i = 1;
    Liste *pTemp;
    Liste element;
    pElement = &element;
@@ -230,7 +250,7 @@ int del_entry(int position) /* Loeschen (delete) */
       pElement = pElement->pnext;
       i++;
    }
-   if (i != position) {
+   if (i != position || pElement->pnext == NULL) {
       return LIST_IS_NOT_THAT_LONG;
    } else {
       pTemp = pElement->pnext;
@@ -258,7 +278,7 @@ int get_anzentries(void)      /* Anzahl ermitteln  */
       pElement = pElement->pnext;
       anzahlElemente++;
    }
-   
+
    return anzahlElemente;
 }
 
@@ -276,7 +296,7 @@ int find_entry(int value)
    if(pStart == NULL) {
       return THERE_IS_NO_LIST;
    }
-   
+
    while(pElement != NULL) {
       if(pElement->daten == value) {
          return position;
